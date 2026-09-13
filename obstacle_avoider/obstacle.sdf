@@ -1,0 +1,121 @@
+<?xml version="1.0" ?>
+<sdf version="1.6">
+  <world name="obstacle_world">
+    
+    <!-- Physics Settings -->
+    <physics name="1ms" type="ignored">
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+    </physics>
+
+    <!-- Required Gazebo Plugins -->
+    <plugin filename="libignition-gazebo-physics-system.so" name="ignition::gazebo::systems::Physics"/>
+    <plugin filename="libignition-gazebo-user-commands-system.so" name="ignition::gazebo::systems::UserCommands"/>
+    <plugin filename="libignition-gazebo-scene-broadcaster-system.so" name="ignition::gazebo::systems::SceneBroadcaster"/>
+
+    <!-- Needed for the gpu_lidar sensor to render/publish /scan -->
+    <plugin filename="libignition-gazebo-sensors-system.so" name="ignition::gazebo::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+
+    <!-- Needed for the imu sensor to publish /imu -->
+    <plugin filename="libignition-gazebo-imu-system.so" name="ignition::gazebo::systems::Imu"/>
+    
+    <!-- Light Source -->
+    <light type="directional" name="sun">
+      <cast_shadows>true</cast_shadows>
+      <pose>0 0 10 0 0 0</pose>
+      <diffuse>0.8 0.8 0.8 1</diffuse>
+      <specular>0.2 0.2 0.2 1</specular>
+      <direction>-0.5 0.1 -0.9</direction>
+    </light>
+    
+    <!-- Ground Plane -->
+    <model name="ground_plane">
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>100 100</size>
+            </plane>
+          </geometry>
+        </collision>
+        <visual name="visual">
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>100 100</size>
+            </plane>
+          </geometry>
+          <material>
+            <ambient>0.8 0.8 0.8 1</ambient>
+            <diffuse>0.8 0.8 0.8 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+    
+    <!-- Obstacle 1: Front Right -->
+    <model name="box_1">
+      <pose>1.5 -1.0 0.5 0 0 0</pose>
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>0.5 0.5 1</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>0.5 0.5 1</size></box></geometry>
+          <material><ambient>0.8 0.1 0.1 1</ambient></material> <!-- Red -->
+        </visual>
+      </link>
+    </model>
+    
+    <!-- Obstacle 2: Front Left -->
+    <model name="box_2">
+      <pose>2.5 1.5 0.5 0 0 0</pose>
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>0.8 0.8 1</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>0.8 0.8 1</size></box></geometry>
+          <material><ambient>0.1 0.8 0.1 1</ambient></material> <!-- Green -->
+        </visual>
+      </link>
+    </model>
+
+    <!-- Obstacle 3: Directly Ahead (Far) -->
+    <model name="box_3">
+      <pose>4.0 0.0 0.5 0 0 0</pose>
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>1.0 2.0 1</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>1.0 2.0 1</size></box></geometry>
+          <material><ambient>0.1 0.1 0.8 1</ambient></material> <!-- Blue -->
+        </visual>
+      </link>
+    </model>
+
+    <!-- Obstacle 4: Behind -->
+    <model name="box_4">
+      <pose>-1.5 0.0 0.5 0 0 0</pose>
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>0.5 2.0 1</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>0.5 2.0 1</size></box></geometry>
+          <material><ambient>0.8 0.8 0.1 1</ambient></material> <!-- Yellow -->
+        </visual>
+      </link>
+    </model>
+
+  </world>
+</sdf>
