@@ -1,0 +1,9 @@
+string mission_file
+---
+bool success
+float32 total_distance
+int32 waypoints_completed
+---
+int32 current_waypoint_index
+string status
+float32 distance_to_target
