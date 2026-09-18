@@ -3,124 +3,169 @@
 import sys
 
 import rclpy
+from rclpy.node import Node
 from rclpy.action import ActionClient
 
 from waypoint_follower.action import Mission
 
 
-class MissionClient:
+class MissionClient(Node):
 
     def __init__(self):
-        self.node = rclpy.create_node('mission_client')
 
-        self.action_client = ActionClient(
-            self.node,
+        super().__init__('mission_client')
+
+        self.client = ActionClient(
+            self,
             Mission,
             'follow_mission'
         )
 
+        self.goal_handle = None
+
     def feedback_callback(self, feedback_msg):
+
         feedback = feedback_msg.feedback
 
-        self.node.get_logger().info(
-            f'Waypoint: {feedback.current_waypoint_index} | '
+        self.get_logger().info(
+            f'Waypoint: '
+            f'{feedback.current_waypoint_index} | '
             f'{feedback.status} | '
-            f'Distance: {feedback.distance_to_target:.2f} m'
+            f'Distance: '
+            f'{feedback.distance_to_target:.2f} m'
         )
 
-    def send_goal(self, mission_file):
+    def send_goal(self, filename):
 
-        self.node.get_logger().info(
+        self.get_logger().info(
             'Waiting for mission server...'
         )
 
-        self.action_client.wait_for_server()
+        if not self.client.wait_for_server(
+            timeout_sec=10.0
+        ):
 
-        goal_msg = Mission.Goal()
-        goal_msg.mission_file = mission_file
+            self.get_logger().error(
+                'Mission server not available'
+            )
 
-        self.node.get_logger().info(
-            f'Sending mission: {mission_file}'
+            return False
+
+        goal = Mission.Goal()
+
+        goal.mission_file = filename
+
+        self.get_logger().info(
+            f'Sending mission: {filename}'
         )
 
-        send_goal_future = self.action_client.send_goal_async(
-            goal_msg,
+        future = self.client.send_goal_async(
+            goal,
             feedback_callback=self.feedback_callback
         )
 
         rclpy.spin_until_future_complete(
-            self.node,
-            send_goal_future
+            self,
+            future
         )
 
-        goal_handle = send_goal_future.result()
+        self.goal_handle = future.result()
 
-        if not goal_handle.accepted:
-            self.node.get_logger().error(
-                'Mission goal was rejected.'
+        if self.goal_handle is None:
+
+            self.get_logger().error(
+                'Goal was not accepted'
             )
+
+            return False
+
+        if not self.goal_handle.accepted:
+
+            self.get_logger().error(
+                'Goal rejected'
+            )
+
+            return False
+
+        self.get_logger().info(
+            'Goal accepted'
+        )
+
+        result_future = (
+            self.goal_handle.get_result_async()
+        )
+
+        rclpy.spin_until_future_complete(
+            self,
+            result_future
+        )
+
+        result = result_future.result().result
+
+        self.get_logger().info(
+            f'Mission finished | '
+            f'Success: {result.success} | '
+            f'Distance: '
+            f'{result.total_distance:.2f} m | '
+            f'Waypoints completed: '
+            f'{result.waypoints_completed}'
+        )
+
+        return True
+
+    def cancel(self):
+
+        if self.goal_handle is None:
             return
 
-        self.node.get_logger().info(
-            'Mission goal accepted.'
+        if not self.goal_handle.accepted:
+            return
+
+        self.get_logger().info(
+            'Cancelling mission...'
         )
 
-        result_future = goal_handle.get_result_async()
+        future = (
+            self.goal_handle.cancel_goal_async()
+        )
 
-        try:
-            rclpy.spin_until_future_complete(
-                self.node,
-                result_future
-            )
-
-            result = result_future.result().result
-
-            self.node.get_logger().info(
-                f'Success: {result.success}'
-            )
-            self.node.get_logger().info(
-                f'Total distance: '
-                f'{result.total_distance:.2f} m'
-            )
-            self.node.get_logger().info(
-                f'Waypoints completed: '
-                f'{result.waypoints_completed}'
-            )
-
-        except KeyboardInterrupt:
-
-            self.node.get_logger().info(
-                'Ctrl+C detected. Cancelling mission...'
-            )
-
-            cancel_future = goal_handle.cancel_goal_async()
-
-            rclpy.spin_until_future_complete(
-                self.node,
-                cancel_future
-            )
-
-            self.node.get_logger().info(
-                'Cancellation request sent.'
-            )
+        rclpy.spin_until_future_complete(
+            self,
+            future
+        )
 
 
 def main(args=None):
 
     rclpy.init(args=args)
 
-    mission_file = sys.argv[1] if len(sys.argv) > 1 else "mission_square.yaml"
+    node = MissionClient()
 
-    client = MissionClient()
+    if len(sys.argv) > 1:
+
+        filename = sys.argv[1]
+
+    else:
+
+        filename = 'mission_square.yaml'
 
     try:
-        client.send_goal(mission_file)
-    except KeyboardInterrupt:
-        pass
 
-    client.node.destroy_node()
-    rclpy.shutdown()
+        node.send_goal(filename)
+
+    except KeyboardInterrupt:
+
+        node.cancel()
+
+    finally:
+
+        node.destroy_node()
+
+        if rclpy.ok():
+
+            rclpy.shutdown()
 
 
 if __name__ == '__main__':
+
     main()
